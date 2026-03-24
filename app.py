@@ -323,6 +323,11 @@ def main() -> None:
     st.title("🤝 Parent Coaching Assistant")
     st.caption("עוזר אימון הורים | מבוסס על פרוטוקול מובנה")
 
+    # On Streamlit Cloud, secrets live in st.secrets (not os.environ).
+    # Copying them into os.environ lets llm_client.py read them via os.getenv.
+    for _key, _val in st.secrets.items():
+        os.environ.setdefault(_key, str(_val))
+
     _init_session()
 
     client: OpenAI = st.session_state.client
