@@ -13,6 +13,7 @@ Run with: streamlit run app.py
 
 import json
 import logging
+import os
 import streamlit as st
 from openai import OpenAI
 
