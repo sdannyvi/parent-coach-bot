@@ -279,6 +279,26 @@ def _init_session() -> None:
         # Maps question id (1-4) to the accepted answer string
         st.session_state.protocol_answers: dict[int, str] = {}
     if "client" not in st.session_state:
+        # Show available secret keys (not values) to help diagnose missing secrets
+        secret_keys = list(st.secrets.keys()) if st.secrets else []
+        logger.info("st.secrets keys available: %s", secret_keys)
+
+        required = ["AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_DEPLOYMENT_NAME"]
+        missing = [k for k in required if k not in st.secrets and not os.getenv(k)]
+        if missing:
+            st.error(
+                "**Missing secrets:** " + ", ".join(f"`{k}`" for k in missing) + "\n\n"
+                "Go to **Manage app → Settings → Secrets** and paste:\n"
+                "```toml\n"
+                'AZURE_OPENAI_ENDPOINT = "https://api.openai.com/v1"\n'
+                'AZURE_OPENAI_API_KEY = "sk-proj-..."\n'
+                'AZURE_OPENAI_DEPLOYMENT_NAME = "gpt-4o"\n'
+                'OPENAI_TEMPERATURE = "0.7"\n'
+                'OPENAI_MAX_TOKENS = "4000"\n'
+                "```\n\n"
+                f"Keys currently found in st.secrets: `{secret_keys}`"
+            )
+            st.stop()
         st.session_state.client = initialize_client()
 
 
