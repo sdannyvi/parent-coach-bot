@@ -18,7 +18,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
 logger = logging.getLogger(__name__)
 
@@ -42,27 +41,16 @@ def initialize_client() -> OpenAI:
     load_dotenv(env_path, override=True)
 
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "").strip('"').strip("'")
-    cognitive_services_url = os.getenv("AZURE_COGNITIVE_SERVICES_URL", "").strip('"').strip("'")
     api_key = os.getenv("AZURE_OPENAI_API_KEY", "").strip('"').strip("'")
 
     if not endpoint:
         raise RuntimeError("AZURE_OPENAI_ENDPOINT is not set in the environment.")
 
-    if api_key:
-        logger.info("Authenticating with API key.")
-        return OpenAI(base_url=endpoint, api_key=api_key)
+    if not api_key:
+        raise RuntimeError("AZURE_OPENAI_API_KEY is not set in the environment.")
 
-    if cognitive_services_url:
-        logger.info("Authenticating with Azure AD (DefaultAzureCredential).")
-        credential = DefaultAzureCredential()
-        token_provider = get_bearer_token_provider(credential, cognitive_services_url)
-        # The openai SDK accepts a callable as api_key when using token providers
-        return OpenAI(base_url=endpoint, api_key=token_provider)
-
-    raise RuntimeError(
-        "No authentication method available. "
-        "Set AZURE_OPENAI_API_KEY or AZURE_COGNITIVE_SERVICES_URL."
-    )
+    logger.info("Authenticating with API key.")
+    return OpenAI(base_url=endpoint, api_key=api_key)
 
 
 def get_deployment() -> str:
