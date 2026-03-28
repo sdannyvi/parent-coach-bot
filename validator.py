@@ -143,6 +143,7 @@ def validate_answer(
     """
     # ── Layer 1: Hard rules ───────────────────────────────────────────────────
 
+    # Q1: child's action must be positive (no negation)
     if question_id == 1 and "לא" in answer.split():
         return {
             "alignment": "not_aligned",
@@ -152,11 +153,22 @@ def validate_answer(
             "should_accept": False,
         }
 
-    if question_id == 4 and answer.strip() not in _Q4_VALID:
+    # Q3: parent's reaction must also be a positive action (no negation)
+    if question_id == 3 and "לא" in answer.split():
+        return {
+            "alignment": "not_aligned",
+            "confidence": 1.0,
+            "reasoning_summary": "Hard rule: parent's reaction contains the word 'לא'.",
+            "feedback": "נסה/י לתאר מה עשית בפועל, ולא מה לא עשית.",
+            "should_accept": False,
+        }
+
+    # Q5: reinforcement question accepts only כן or לא
+    if question_id == 5 and answer.strip() not in _Q4_VALID:
         return {
             "alignment": "invalid_format",
             "confidence": 1.0,
-            "reasoning_summary": "Hard rule: Q4 requires exactly כן or לא.",
+            "reasoning_summary": "Hard rule: Q5 requires exactly כן or לא.",
             "feedback": "אנא ענה/י רק כן או לא.",
             "should_accept": False,
         }

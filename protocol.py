@@ -2,18 +2,21 @@
 Protocol definition for the parent coaching chatbot.
 
 This file belongs to the parent_coach_bot module and defines the structured
-four-question protocol used to guide parents through a behavioral analysis of
+five-question protocol used to guide parents through a behavioral analysis of
 an interaction with their child.
 
-The protocol focuses on identifying the child's negative action, understanding
-the child's goal, evaluating whether the goal was achieved, and determining
-whether the parent inadvertently reinforced the behavior pattern.
+Questions:
+  1. What negative action did the child do?
+  2. What was the child's goal?
+  3. How did the parent react / what did the parent do?
+  4. What was the outcome relative to the child's goal?
+  5. Did the parent reinforce the negative pattern?
 
 Update this file when the coaching protocol changes, questions are revised,
 or validation guidelines are adjusted by domain experts.
 """
 
-# Each step defines the question id (1-4), the Hebrew question shown to the parent,
+# Each step defines the question id (1-5), the Hebrew question shown to the parent,
 # and the English guidelines used by the LLM validator to evaluate alignment.
 PROTOCOL: list[dict] = [
     {
@@ -58,9 +61,37 @@ rather than achieve). Ask the parent to reframe in positive terms.
     },
     {
         "id": 3,
+        "question": "איך הגבת? מה עשית באותו רגע?",
+        "guidelines": """
+The answer must describe a concrete action the PARENT took in response to the child.
+
+The word "לא" (no/not) must NOT appear anywhere in the answer.
+
+The answer must be framed as a positive action (what the parent DID), not as
+avoidance (what the parent did NOT do or avoided doing).
+
+Bad examples (negation or avoidance):
+"לא עשיתי כלום"
+"לא הגבתי"
+"התעלמתי" — this describes inaction; ask the parent to describe what they actively did
+
+Good examples (positive action):
+"הסכמתי ועזרתי לו"
+"הסברתי לו בשקט"
+"יצאתי מהחדר"
+"ויתרתי לו"
+"עמדתי על שלי"
+"לקחתי אותו הצידה ודיברתי איתו"
+
+If the answer contains the word "לא", it is automatically not_aligned.
+""",
+    },
+    {
+        "id": 4,
         "question": "מה הייתה התוצאה ביחס למטרה?",
         "guidelines": """
-The answer should describe whether the child's goal was achieved or not.
+The answer should describe whether the child's goal was achieved or not,
+in light of how the parent responded.
 
 Be very permissive here. Accept any answer that conveys whether the goal was
 reached — even loosely. Do NOT loop or over-coach on this question.
@@ -71,7 +102,6 @@ Good examples (accept all of these):
 "הוא המשיך לשחק" (implies goal achieved)
 "היא נכנסה למקלחת" (implies goal not achieved)
 "ויתרתי לו"
-"לא ויתרתי"
 "כן" / "לא"
 
 Only reject if the answer is completely unrelated to the child's goal
@@ -79,7 +109,7 @@ Only reject if the answer is completely unrelated to the child's goal
 """,
     },
     {
-        "id": 4,
+        "id": 5,
         "question": "האם חיזקתם את דפוס הפעולה השלילי? כן או לא",
         "guidelines": """
 The only acceptable answers are "כן" or "לא".

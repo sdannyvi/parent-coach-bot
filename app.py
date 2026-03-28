@@ -36,7 +36,10 @@ STEP_Q1 = 1        # Protocol question 1
 STEP_Q2 = 2        # Protocol question 2
 STEP_Q3 = 3        # Protocol question 3
 STEP_Q4 = 4        # Protocol question 4
-STEP_SUMMARY = 5   # Final summary produced
+STEP_Q5 = 5        # Protocol question 5
+STEP_SUMMARY = 6   # Final summary produced
+
+NUM_QUESTIONS = 5  # Total number of protocol questions
 
 # ── LLM helpers ───────────────────────────────────────────────────────────────
 
@@ -307,7 +310,7 @@ def main() -> None:
             empathy = generate_empathy_response(client, user_input)
             first_q = PROTOCOL[0]["question"]
             bot_reply = (
-                f"{empathy}\n\n---\n\n**שאלה 1 מתוך 4:**\n\n{first_q}"
+                f"{empathy}\n\n---\n\n**שאלה 1 מתוך {NUM_QUESTIONS}:**\n\n{first_q}"
             )
 
         _add_message("assistant", bot_reply)
@@ -316,8 +319,8 @@ def main() -> None:
 
         st.session_state.step = STEP_Q1
 
-    # ── Steps 1-4: Protocol questions ────────────────────────────────────────
-    elif STEP_Q1 <= step <= STEP_Q4:
+    # ── Steps 1-5: Protocol questions ────────────────────────────────────────
+    elif STEP_Q1 <= step <= STEP_Q5:
         protocol_entry = _current_protocol_step()
         q_id = protocol_entry["id"]
 
@@ -355,7 +358,7 @@ def main() -> None:
             st.session_state.attempt_counts[q_id] = 0
             next_step = step + 1
 
-            if next_step <= STEP_Q4:
+            if next_step <= STEP_Q5:
                 next_entry = PROTOCOL[next_step - 1]
 
                 if next_step == STEP_Q2:
@@ -366,12 +369,12 @@ def main() -> None:
                         "כדי לשנות את ההתנהגות, צריך לוודא שהילד יכול להגיע לאותה מטרה "
                         "רק דרך התנהגות אחרת.\n\n"
                         "בוא/י נצא לגלות מה המטרה שהילד ניסה להשיג עם הפעולה הזו.\n\n"
-                        f"---\n\n**שאלה {next_step} מתוך 4:**\n\n{next_entry['question']}"
+                        f"---\n\n**שאלה {next_step} מתוך {NUM_QUESTIONS}:**\n\n{next_entry['question']}"
                     )
                 else:
                     bot_reply = (
                         f"תודה!\n\n---\n\n"
-                        f"**שאלה {next_step} מתוך 4:**\n\n{next_entry['question']}"
+                        f"**שאלה {next_step} מתוך {NUM_QUESTIONS}:**\n\n{next_entry['question']}"
                     )
                 st.session_state.step = next_step
             else:
