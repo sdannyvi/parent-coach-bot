@@ -85,29 +85,51 @@ def generate_empathy_response(client: OpenAI, event_description: str) -> str:
     return _call_llm(client, messages)
 
 
-def generate_guidance(client: OpenAI, question: str, feedback: str) -> str:
+def generate_guidance(
+    client: OpenAI,
+    question: str,
+    feedback: str,
+    event_context: str = "",
+    q1_answer: str = "",
+) -> str:
     """
     Generate a gentle, supportive message asking the parent to refine their answer.
+
+    When event_context and q1_answer are supplied (used for Q2), the LLM is also
+    asked to suggest 2-3 concrete goal examples drawn from the actual situation.
 
     Args:
         client: Authenticated OpenAI client.
         question: The Hebrew protocol question that was asked.
         feedback: The evaluation feedback explaining what was missing.
+        event_context: The parent's original event description (optional).
+        q1_answer: The accepted answer to Q1 — the child's action (optional).
 
     Returns:
         Hebrew guidance string. Does not repeat the full question.
     """
+    if event_context and q1_answer:
+        # Q2-specific guidance: include situation context and suggest relevant examples
+        content = (
+            f"הערכת תשובת ההורה לשאלה:\n\"{question}\"\n\n"
+            f"המשוב הפנימי:\n{feedback}\n\n"
+            f"תיאור הסיטואציה:\n{event_context}\n\n"
+            f"הפעולה שהילד עשה (Q1):\n{q1_answer}\n\n"
+            "כתוב הודעה קצרה, תומכת ולא שיפוטית שמסבירה להורה שהמטרה שציין לא ממש "
+            "מתאימה לסיטואציה. הצע 2-3 דוגמאות ספציפיות למטרות שהיו הגיוניות "
+            "בהקשר של הסיטואציה שתואר, ומזמינה אותו לנסות שוב. "
+            "אל תחזור על השאלה המלאה."
+        )
+    else:
+        content = (
+            f"הערכת תשובת ההורה לשאלה:\n\"{question}\"\n\n"
+            f"המשוב הפנימי:\n{feedback}\n\n"
+            "כתוב הודעה קצרה, תומכת ולא שיפוטית שמסבירה להורה מה כדאי לדייק, "
+            "ומזמינה אותו לנסות שוב. אל תחזור על השאלה המלאה – רק הכוון עדין."
+        )
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": (
-                f"הערכת תשובת ההורה לשאלה:\n\"{question}\"\n\n"
-                f"המשוב הפנימי:\n{feedback}\n\n"
-                "כתוב הודעה קצרה, תומכת ולא שיפוטית שמסבירה להורה מה כדאי לדייק, "
-                "ומזמינה אותו לנסות שוב. אל תחזור על השאלה המלאה – רק הכוון עדין."
-            ),
-        },
+        {"role": "user", "content": content},
     ]
     return _call_llm(client, messages)
 
@@ -376,10 +398,14 @@ def main() -> None:
                 bot_reply = feedback
             else:
                 with st.spinner("מכין הנחיה..."):
+                    # For Q2, pass event context and Q1 answer so the guidance
+                    # can suggest situation-specific goal examples
                     bot_reply = generate_guidance(
                         client,
                         protocol_entry["question"],
                         feedback,
+                        event_context=st.session_state.event_description if q_id == 2 else "",
+                        q1_answer=st.session_state.protocol_answers.get(1, "") if q_id == 2 else "",
                     )
 
         _add_message("assistant", bot_reply)
