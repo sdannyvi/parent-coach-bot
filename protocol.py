@@ -39,37 +39,32 @@ If the answer contains the word "לא", it is automatically not_aligned.
         "id": 2,
         "question": "מה לדעתך הילד ניסה להשיג עם הפעולה הזו?",
         "guidelines": """
-The answer must describe the goal or need the child was trying to fulfill.
-It must also make sense given the situation and action described so far.
+STEP 1 — COHERENCE CHECK (most important, evaluate this first):
+The goal must make sense given the specific situation and child action already described.
+Ask yourself: "Given what happened, is it plausible that the child did this action
+in order to achieve THIS goal?"
 
-Accept ALL THREE of these answer types:
+If the goal is implausible or clearly unrelated to the described situation → not_aligned.
+Do NOT rely on the format examples below to override this coherence check.
 
-TYPE 1 — Actions the parent should perform (things the child wanted the parent to do):
-"שאצא מהחדר"
-"שאתן לו ארטיק"
-"שאוותר לו"
-"שאשאיר אותו בשקט"
+Example of coherent answer:
+Event: child lost a game and pulled parent's hand toward friends.
+Good: "שתתערב לטובתו", "שתגן עליו", "שיקבל עזרה", "תמיכה"
+Bad: "לאכול ארטיק", "זמן מסך", "שקט" — these have nothing to do with the situation.
 
-TYPE 2 — Nouns referring to something the child wanted:
-"שקט"
-"ארטיק"
-"מסך"
-"זמן מסך"
-"להישאר לבד"
+Example of coherent answer:
+Event: child ignored parent and kept playing on the computer.
+Good: "שיוכל להמשיך לשחק", "זמן מסך", "שאוותר לו"
+Bad: "שיאכל ארוחת ערב", "תמיכה רגשית" — unrelated to the described action.
 
-TYPE 3 — External outcomes the child wanted to reach:
-"שיוכל להמשיך לשחק"
-"לצפות בטלוויזיה"
-"לקבל עוד זמן מסך"
+STEP 2 — FORMAT CHECK (only if coherence passed):
+Accept any of these formats as long as the content passed the coherence check:
+- Actions the parent should perform: "שתתערב", "שאוותר לו", "שאצא מהחדר"
+- Nouns: "תמיכה", "שקט", "עזרה", "ניצחון"
+- Outcomes the child wanted: "שיוכל להמשיך לשחק", "שיקבל עזרה"
 
-Avoidance framing is NOT aligned (what the child wanted to AVOID):
-Bad: "שלא יצטרך לעשות שיעורים" → reframe as "שיוכל לשחק"
-Bad: "שלא יצטרך להתקלח"
-
-Coherence check: the goal must make sense given the situation and child action already described.
-If the goal is completely unrelated to the event and action, it is not aligned.
-
-When in doubt, accept the answer.
+Avoidance framing is NOT aligned:
+Bad: "שלא יצטרך לעשות שיעורים" → ask to reframe as "שיוכל לשחק"
 """,
     },
     {

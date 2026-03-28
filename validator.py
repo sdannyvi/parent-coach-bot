@@ -164,11 +164,18 @@ def validate_answer(
     # ── Layer 2: LLM evaluation ───────────────────────────────────────────────
 
     context_block = (
-        f"Background — parent's original event description:\n{event_context}\n\n"
+        f"Situation context (use this to judge coherence):\n{event_context}\n\n"
+        if event_context else ""
+    )
+    coherence_instruction = (
+        "IMPORTANT: First check coherence — does the answer make sense given the "
+        "situation context above? If not, mark not_aligned regardless of format. "
+        "Only check format/type after coherence passes.\n\n"
         if event_context else ""
     )
     prompt = (
         f"{context_block}"
+        f"{coherence_instruction}"
         f"Protocol question:\n{question}\n\n"
         f"Alignment guidelines:\n{guidelines}\n\n"
         f"Parent's answer:\n{answer}\n\n"
