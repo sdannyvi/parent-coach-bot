@@ -40,23 +40,34 @@ If the answer contains the word "לא", it is automatically not_aligned.
         "question": "מה לדעתך הילד ניסה להשיג עם הפעולה הזו?",
         "guidelines": """
 The answer must describe the goal or need the child was trying to fulfill.
+It must also make sense given the situation and action described so far.
 
-Be permissive. Accept BOTH:
-- External outcomes: "to watch TV", "to keep playing", "to get ice cream"
-- Internal states: "quiet", "to be left alone", "calm"
+Accept ALL THREE of these answer types:
 
-The answer should describe what the child wanted, not what the parent felt.
+TYPE 1 — Actions the parent should perform (things the child wanted the parent to do):
+"שאצא מהחדר"
+"שאתן לו ארטיק"
+"שאוותר לו"
+"שאשאיר אותו בשקט"
 
-Avoidance framing is NOT aligned (what the child wanted to avoid rather than achieve):
-Bad: "שלא יצטרך לעשות שיעורים" → ask for positive reframe, e.g. "שיוכל לשחק"
+TYPE 2 — Nouns referring to something the child wanted:
+"שקט"
+"ארטיק"
+"מסך"
+"זמן מסך"
+"להישאר לבד"
+
+TYPE 3 — External outcomes the child wanted to reach:
+"שיוכל להמשיך לשחק"
+"לצפות בטלוויזיה"
+"לקבל עוד זמן מסך"
+
+Avoidance framing is NOT aligned (what the child wanted to AVOID):
+Bad: "שלא יצטרך לעשות שיעורים" → reframe as "שיוכל לשחק"
 Bad: "שלא יצטרך להתקלח"
 
-Positive framing IS aligned (what the child wanted to gain or experience):
-Good: "שיוכל להמשיך לשחק"
-Good: "שקט"
-Good: "שיוותרו לו"
-Good: "לצפות בטלוויזיה"
-Good: "להישאר לבד"
+Coherence check: the goal must make sense given the situation and child action already described.
+If the goal is completely unrelated to the event and action, it is not aligned.
 
 When in doubt, accept the answer.
 """,

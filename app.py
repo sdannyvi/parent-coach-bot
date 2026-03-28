@@ -255,8 +255,8 @@ def main() -> None:
     if not st.session_state.messages:
         opening_lines = [
             "כל הכבוד שעצרת רגע והחלטת להתייעץ. זה לא מובן מאליו.",
-            "אני מזמין אותך להתמקד בסיטואציה אחת שקרתה עכשיו או לאחרונה, "
-            "שבה הילד התנהג בצורה שהיית רוצה לשנות.",
+            "התמקד/י בפעולה שהילד שלך עושה עכשיו, או עשה בסיטואציה שבה אתה מנסה לתקן – "
+            "פעולה שמרגישה בלתי נסבלת ושהיית רוצה לשנות.",
             "תאר/י לי מה קרה.",
         ]
         for line in opening_lines:
@@ -310,6 +310,7 @@ def main() -> None:
                 guidelines=protocol_entry["guidelines"],
                 answer=user_input,
                 attempt_count=attempt_count,
+                event_context=st.session_state.event_description,
             )
 
         alignment = evaluation.get("alignment", "not_aligned")
@@ -334,10 +335,22 @@ def main() -> None:
 
             if next_step <= STEP_Q4:
                 next_entry = PROTOCOL[next_step - 1]
-                bot_reply = (
-                    f"תודה!\n\n---\n\n"
-                    f"**שאלה {next_step} מתוך 4:**\n\n{next_entry['question']}"
-                )
+
+                if next_step == STEP_Q2:
+                    # Before Q2 explain WHY understanding the child's goal matters
+                    bot_reply = (
+                        "תודה!\n\n"
+                        "לכל פעולה שילד עושה יש מטרה או צורך שהוא מנסה להשיג. "
+                        "כדי לשנות את ההתנהגות, צריך לוודא שהילד יכול להגיע לאותה מטרה "
+                        "רק דרך התנהגות אחרת.\n\n"
+                        "בוא/י נצא לגלות מה המטרה שהילד ניסה להשיג עם הפעולה הזו.\n\n"
+                        f"---\n\n**שאלה {next_step} מתוך 4:**\n\n{next_entry['question']}"
+                    )
+                else:
+                    bot_reply = (
+                        f"תודה!\n\n---\n\n"
+                        f"**שאלה {next_step} מתוך 4:**\n\n{next_entry['question']}"
+                    )
                 st.session_state.step = next_step
             else:
                 # All four questions answered → produce summary

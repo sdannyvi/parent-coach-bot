@@ -114,6 +114,7 @@ def validate_answer(
     guidelines: str,
     answer: str,
     attempt_count: int,
+    event_context: str = "",
 ) -> dict:
     """
     Validate a parent's answer against the protocol guidelines.
@@ -129,6 +130,8 @@ def validate_answer(
         answer: The parent's raw answer string.
         attempt_count: Number of previous failed attempts on this question
                        (0 on the first try).
+        event_context: The parent's original event description, used to check
+                       answer coherence (especially for Q2).
 
     Returns:
         Dict with keys:
@@ -160,7 +163,12 @@ def validate_answer(
 
     # ── Layer 2: LLM evaluation ───────────────────────────────────────────────
 
+    context_block = (
+        f"Background — parent's original event description:\n{event_context}\n\n"
+        if event_context else ""
+    )
     prompt = (
+        f"{context_block}"
         f"Protocol question:\n{question}\n\n"
         f"Alignment guidelines:\n{guidelines}\n\n"
         f"Parent's answer:\n{answer}\n\n"
