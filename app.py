@@ -11,7 +11,6 @@ prompting logic changes.
 Run with: streamlit run app.py
 """
 
-import json
 import logging
 import os
 import streamlit as st
@@ -19,6 +18,7 @@ from openai import OpenAI
 
 from llm_client import initialize_client, get_deployment, get_temperature, get_max_tokens
 from protocol import PROTOCOL
+from validator import validate_answer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,64 +31,12 @@ SYSTEM_PROMPT = (
     "ומעודד חשיבה עצמית והתפתחות."
 )
 
-EVAL_SYSTEM_PROMPT = (
-    "You evaluate whether a parent's answer follows a structured parenting "
-    "reflection protocol. Be strict but fair. Always respond with valid JSON only."
-)
-
 STEP_EVENT = 0     # Waiting for parent to describe the event
 STEP_Q1 = 1        # Protocol question 1
 STEP_Q2 = 2        # Protocol question 2
 STEP_Q3 = 3        # Protocol question 3
 STEP_Q4 = 4        # Protocol question 4
 STEP_SUMMARY = 5   # Final summary produced
-
-# Accepted alignment value that causes the bot to advance to the next step
-ALIGNED = "aligned"
-
-# Q4 only accepts one of these two answers (after stripping whitespace)
-Q4_VALID_ANSWERS = {"כן", "לא"}
-
-
-# ── Hard validation rules (applied before calling the LLM) ───────────────────
-
-def _hard_validate_q1(answer: str) -> dict | None:
-    """
-    Apply the hard rule for question 1: answer must not contain the word 'לא'.
-
-    Args:
-        answer: The parent's raw answer string.
-
-    Returns:
-        A result dict if the rule fires (automatically not_aligned), else None.
-    """
-    if "לא" in answer.split():
-        return {
-            "alignment": "not_aligned",
-            "feedback": "התשובה צריכה לתאר מה הילד כן עשה, ולא מה הוא לא עשה.",
-        }
-    return None
-
-
-def _hard_validate_q4(answer: str) -> dict | None:
-    """
-    Apply the hard rule for question 4: only 'כן' or 'לא' are accepted.
-
-    Args:
-        answer: The parent's raw answer string.
-
-    Returns:
-        A result dict prompting the parent to re-answer if invalid, else None.
-        Uses a special alignment value "invalid_format" so the bot stays on Q4
-        and does not call the LLM.
-    """
-    if answer.strip() not in Q4_VALID_ANSWERS:
-        return {
-            "alignment": "invalid_format",
-            "feedback": "אנא ענה/י רק כן או לא.",
-        }
-    return None
-
 
 # ── LLM helpers ───────────────────────────────────────────────────────────────
 
@@ -135,64 +83,6 @@ def generate_empathy_response(client: OpenAI, event_description: str) -> str:
         },
     ]
     return _call_llm(client, messages)
-
-
-def evaluate_answer(
-    client: OpenAI,
-    question_id: int,
-    question: str,
-    guidelines: str,
-    parent_answer: str,
-) -> dict:
-    """
-    Evaluate whether the parent's answer aligns with the protocol guidelines via LLM.
-
-    Hard validation rules for Q1 and Q4 are applied before calling the LLM.
-
-    Args:
-        client: Authenticated OpenAI client.
-        question_id: The protocol question id (1-4).
-        question: The Hebrew question text.
-        guidelines: Alignment guidelines for this question.
-        parent_answer: The parent's answer to evaluate.
-
-    Returns:
-        Dict with keys "alignment" ("aligned" | "partially_aligned" | "not_aligned"
-        | "invalid_format") and "feedback" (Hebrew string).
-    """
-    # Apply hard rules first — no LLM call needed if they trigger
-    if question_id == 1:
-        hard_result = _hard_validate_q1(parent_answer)
-        if hard_result:
-            return hard_result
-
-    if question_id == 4:
-        hard_result = _hard_validate_q4(parent_answer)
-        if hard_result:
-            return hard_result
-
-    evaluation_prompt = (
-        f"Protocol question:\n{question}\n\n"
-        f"Alignment guidelines:\n{guidelines}\n\n"
-        f"Parent's answer:\n{parent_answer}\n\n"
-        "Evaluate whether the parent's answer follows the guidelines.\n"
-        "Respond ONLY with valid JSON, no extra text:\n"
-        '{"alignment": "aligned | partially_aligned | not_aligned", '
-        '"feedback": "short explanation in Hebrew"}'
-    )
-    messages = [
-        {"role": "system", "content": EVAL_SYSTEM_PROMPT},
-        {"role": "user", "content": evaluation_prompt},
-    ]
-    raw = _call_llm(client, messages)
-
-    # Strip markdown fences if the model wraps the JSON
-    if "```" in raw:
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-
-    return json.loads(raw.strip())
 
 
 def generate_guidance(client: OpenAI, question: str, feedback: str) -> str:
@@ -279,6 +169,9 @@ def _init_session() -> None:
     if "protocol_answers" not in st.session_state:
         # Maps question id (1-4) to the accepted answer string
         st.session_state.protocol_answers: dict[int, str] = {}
+    if "attempt_counts" not in st.session_state:
+        # Maps question id (1-4) to number of failed attempts so far
+        st.session_state.attempt_counts: dict[int, int] = {}
     if "client" not in st.session_state:
         # Show available secret keys (not values) to help diagnose missing secrets
         secret_keys = list(st.secrets.keys()) if st.secrets else []
@@ -358,12 +251,18 @@ def main() -> None:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # ── Show initial bot prompt when conversation is fresh ────────────────────
+    # ── Show 3-part opening when conversation is fresh ────────────────────────
     if not st.session_state.messages:
-        welcome = "תאר/י בקצרה אירוע שקרה עם הילד/ה."
-        _add_message("assistant", welcome)
-        with st.chat_message("assistant"):
-            st.markdown(welcome)
+        opening_lines = [
+            "כל הכבוד שעצרת רגע והחלטת להתייעץ. זה לא מובן מאליו.",
+            "אני מזמין אותך להתמקד בסיטואציה אחת שקרתה עכשיו או לאחרונה, "
+            "שבה הילד התנהג בצורה שהיית רוצה לשנות.",
+            "תאר/י לי מה קרה.",
+        ]
+        for line in opening_lines:
+            _add_message("assistant", line)
+            with st.chat_message("assistant"):
+                st.markdown(line)
 
     # ── Handle user input ─────────────────────────────────────────────────────
     user_input = st.chat_input("כתוב/י כאן...")
@@ -400,30 +299,43 @@ def main() -> None:
         protocol_entry = _current_protocol_step()
         q_id = protocol_entry["id"]
 
+        # Current attempt count for this question (0-based before this attempt)
+        attempt_count = st.session_state.attempt_counts.get(q_id, 0)
+
         with st.spinner("מעריך את התשובה..."):
-            evaluation = evaluate_answer(
+            evaluation = validate_answer(
                 client=client,
                 question_id=q_id,
                 question=protocol_entry["question"],
                 guidelines=protocol_entry["guidelines"],
-                parent_answer=user_input,
+                answer=user_input,
+                attempt_count=attempt_count,
             )
 
         alignment = evaluation.get("alignment", "not_aligned")
+        confidence = evaluation.get("confidence", 0.5)
+        should_accept = evaluation.get("should_accept", False)
         feedback = evaluation.get("feedback", "")
 
-        print(f"[DEBUG] question_id={q_id} | alignment={alignment} | feedback={feedback!r}")
-        logger.info("step=%d | q_id=%d | alignment=%s", step, q_id, alignment)
+        print(
+            f"[DEBUG] q_id={q_id} | alignment={alignment} | confidence={confidence:.2f} "
+            f"| should_accept={should_accept} | attempts={attempt_count}"
+        )
+        logger.info(
+            "step=%d | q_id=%d | alignment=%s | should_accept=%s | attempts=%d",
+            step, q_id, alignment, should_accept, attempt_count,
+        )
 
-        if alignment == ALIGNED:
-            # Store the accepted answer and move forward
+        if should_accept:
+            # Store the accepted answer, reset attempt count, and advance
             st.session_state.protocol_answers[q_id] = user_input
+            st.session_state.attempt_counts[q_id] = 0
             next_step = step + 1
 
             if next_step <= STEP_Q4:
                 next_entry = PROTOCOL[next_step - 1]
                 bot_reply = (
-                    f"תודה! ✓\n\n---\n\n"
+                    f"תודה!\n\n---\n\n"
                     f"**שאלה {next_step} מתוך 4:**\n\n{next_entry['question']}"
                 )
                 st.session_state.step = next_step
@@ -436,16 +348,18 @@ def main() -> None:
                         st.session_state.protocol_answers,
                     )
                 bot_reply = (
-                    "תודה! ✓\n\n---\n\n"
+                    "תודה!\n\n---\n\n"
                     "✨ **סיכום השיחה:**\n\n"
                     f"{summary}"
                 )
                 st.session_state.step = STEP_SUMMARY
 
         else:
-            # partially_aligned, not_aligned, or invalid_format
+            # Increment attempt count for next try
+            st.session_state.attempt_counts[q_id] = attempt_count + 1
+
             if alignment == "invalid_format":
-                # Q4 hard rule: just echo the feedback directly, no LLM guidance call
+                # Q4 hard rule: echo the fixed feedback directly, no LLM guidance call
                 bot_reply = feedback
             else:
                 with st.spinner("מכין הנחיה..."):
