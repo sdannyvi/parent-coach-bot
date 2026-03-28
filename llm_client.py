@@ -9,7 +9,7 @@ The endpoint is used as-is from AZURE_OPENAI_ENDPOINT; no path normalization
 is applied so that standard OpenAI URLs (e.g. https://api.openai.com/v1) work
 correctly alongside Azure URLs.
 
-Update this file only when the authentication mechanism or endpoint changes.
+Update this file when authentication, endpoint, or HTTP timeout behavior changes.
 """
 
 import os
@@ -72,7 +72,11 @@ def initialize_client() -> OpenAI:
         raise RuntimeError("AZURE_OPENAI_API_KEY is not set.")
 
     logger.info("Authenticating with API key.")
-    return OpenAI(base_url=endpoint, api_key=api_key)
+    return OpenAI(
+        base_url=endpoint,
+        api_key=api_key,
+        timeout=get_timeout_seconds(),
+    )
 
 
 def get_deployment() -> str:
@@ -109,3 +113,16 @@ def get_max_tokens() -> int:
         Max tokens as int (default 4000).
     """
     return int(_get_config("OPENAI_MAX_TOKENS", "4000"))
+
+
+def get_timeout_seconds() -> float:
+    """
+    Return HTTP client timeout for OpenAI requests (connect + read).
+
+    Prevents APITimeoutError on slow networks or TLS handshakes. Override with
+    OPENAI_TIMEOUT_SECONDS in .env or Streamlit secrets.
+
+    Returns:
+        Timeout in seconds (default 120).
+    """
+    return float(_get_config("OPENAI_TIMEOUT_SECONDS", "120"))

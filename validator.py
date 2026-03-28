@@ -60,6 +60,48 @@ def _call_llm(client: OpenAI, messages: list[dict]) -> str:
     return response.choices[0].message.content.strip()
 
 
+def _q4_affect_only_without_goal_link(answer: str) -> bool:
+    """
+    Detect Q4 answers that only describe ongoing emotion/behavior, not goal outcome.
+
+    Used as a safety net when the LLM still accepts vague answers like
+    "הוא המשיך לבכות" for a goal such as "help me with friends".
+
+    Args:
+        answer: Parent's raw Q4 answer.
+
+    Returns:
+        True if the text is short, matches affect-only patterns, and lacks goal hints.
+    """
+    a = answer.strip()
+    if len(a) > 72:
+        return False
+    affect_markers = (
+        "המשיך לבכות",
+        "המשיכה לבכות",
+        "ממשיך לבכות",
+        "המשיך לצעוק",
+        "המשיך להתעצבן",
+        "נשאר לבכות",
+    )
+    if not any(m in a for m in affect_markers):
+        return False
+    goal_hints = (
+        "עזר",
+        "מטרה",
+        "חבר",
+        "השיג",
+        "לא עזר",
+        "קיבל",
+        "מול",
+        "התערב",
+        "סירב",
+    )
+    if any(h in a for h in goal_hints):
+        return False
+    return True
+
+
 def _parse_json(raw: str) -> dict:
     """
     Parse a JSON string returned by the LLM, stripping markdown fences if present.
@@ -130,8 +172,9 @@ def validate_answer(
         answer: The parent's raw answer string.
         attempt_count: Number of previous failed attempts on this question
                        (0 on the first try).
-        event_context: The parent's original event description, used to check
-                       answer coherence (especially for Q2).
+        event_context: Situation text for coherence checks; for Q3 includes event,
+                       Q1, and Q2 (child's goal) so relevance help/block/irrelevant
+                       is judged against the child's goal only.
 
     Returns:
         Dict with keys:
@@ -140,6 +183,9 @@ def validate_answer(
           - reasoning_summary (str): brief internal reasoning (not shown to user)
           - feedback (str): Hebrew explanation shown to the parent when not accepted
           - should_accept (bool): whether the flow should advance past this question
+          - restart_at_q2 (bool, optional): True only when Q4 fails and Q2/Q3 must be
+            re-clarified — app restarts at Q2. False when Q4 only needs sharpening.
+          - q4_outcome_unclear (bool, optional): True on Q4 when outcome vs goal is unclear.
     """
     # ── Layer 1: Hard rules ───────────────────────────────────────────────────
 
@@ -183,16 +229,44 @@ def validate_answer(
         "IMPORTANT: First check coherence — does the answer make sense given the "
         "situation context above? If not, mark not_aligned regardless of format. "
         "Only check format/type after coherence passes.\n\n"
-        if event_context else ""
+        if event_context and question_id not in (3, 4) else ""
     )
-    prompt = (
-        f"{context_block}"
-        f"{coherence_instruction}"
-        f"Protocol question:\n{question}\n\n"
-        f"Alignment guidelines:\n{guidelines}\n\n"
-        f"Parent's answer:\n{answer}\n\n"
-        "Evaluate the answer. Think step by step internally, then respond ONLY with "
-        "this JSON (no extra text):\n"
+    q3_instruction = ""
+    if question_id == 3:
+        q3_instruction = (
+            "Q3 — CHILD'S GOAL ONLY (read carefully):\n"
+            "The goal named in context is the CHILD'S goal as the parent stated in Q2. "
+            "It is NOT the parent's separate goal or value (e.g. independence vs. help). "
+            "Parent and child goals may conflict — do not judge morality or pedagogy.\n"
+            "ATTENTION GOALS: If Q2 is about attention/connection (e.g. תשומת לב, שתשים לב, "
+            "שתגיב לו), then parental actions that ENGAGE the child — including yelling back, "
+            "arguing, scolding — are aligned or partially_aligned as ON-THREAD, because they "
+            "still give attention and a response. Do NOT reject 'I screamed back' as irrelevant "
+            "when the child's goal was attention. Irrelevant would be ignoring / no response / "
+            "complete withdrawal while the goal was attention.\n"
+            "OTHER GOALS: The parent's action must be on the SAME THREAD as that goal. "
+            "Generic yelling to be left alone with no link to the stated goal is often not_aligned.\n"
+            "  • aligned/partially_aligned if the action helped toward the goal OR refused/blocked "
+            "it in a way that addresses that goal, OR (for attention goals) engaged the child;\n"
+            "  • not_aligned if irrelevant to the goal thread or only withdrawal/ignore when the "
+            "goal was not attention.\n"
+            "Also check plausibility against the situation context.\n\n"
+        )
+    q4_instruction = ""
+    if question_id == 4:
+        q4_instruction = (
+            "Q4 — OUTCOME RELATIVE TO THE CHILD'S GOAL:\n"
+            "Context includes the child's goal (Q2) and the parent's stated action (Q3).\n"
+            "The parent must describe whether THAT goal (Q2) was achieved or not — not only "
+            "the child's mood.\n"
+            "Set q4_outcome_unclear=true and not_aligned when the answer does not state whether "
+            "the Q2 goal was achieved — e.g. only affect ('המשיך לבכות') without goal wording.\n"
+            "For ATTENTION goals: 'kept crying' may imply continued attention — still unclear "
+            "until phrased in goal terms; set q4_restart_at_q2=FALSE (sharpen only).\n"
+            "Set q4_restart_at_q2=TRUE only when Q3 cannot be mapped to Q2 at all — need new "
+            "goal at Q2. Otherwise q4_restart_at_q2=FALSE.\n\n"
+        )
+    json_block = (
         "{\n"
         '  "alignment": "aligned | partially_aligned | not_aligned",\n'
         '  "confidence": <float 0.0-1.0>,\n'
@@ -201,6 +275,33 @@ def validate_answer(
         '  "should_accept": <true|false>\n'
         "}"
     )
+    if question_id == 4:
+        json_block = (
+            "{\n"
+            '  "alignment": "aligned | partially_aligned | not_aligned",\n'
+            '  "confidence": <float 0.0-1.0>,\n'
+            '  "reasoning_summary": "<one sentence internal summary>",\n'
+            '  "feedback": "<short Hebrew explanation for the parent if not aligned>",\n'
+            '  "should_accept": <true|false>,\n'
+            '  "q4_outcome_unclear": <true|false>,\n'
+            '  "q4_restart_at_q2": <true|false>\n'
+            "}\n"
+            "q4_outcome_unclear: true if you cannot judge goal achievement from the answer.\n"
+            "q4_restart_at_q2: true ONLY if Q2/Q3 are fundamentally misaligned and protocol "
+            "must restart at Q2. FALSE if the parent only needs to phrase outcome in goal terms "
+            "(e.g. attention goal + vague 'kept crying' — sharpen Q4, do NOT restart)."
+        )
+    prompt = (
+        f"{context_block}"
+        f"{q3_instruction}"
+        f"{q4_instruction}"
+        f"{coherence_instruction}"
+        f"Protocol question:\n{question}\n\n"
+        f"Alignment guidelines:\n{guidelines}\n\n"
+        f"Parent's answer:\n{answer}\n\n"
+        "Evaluate the answer. Think step by step internally, then respond ONLY with "
+        f"this JSON (no extra text):\n{json_block}"
+    )
     messages = [
         {"role": "system", "content": _EVAL_SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
@@ -208,10 +309,27 @@ def validate_answer(
     raw = _call_llm(client, messages)
     result = _parse_json(raw)
 
+    if question_id == 4 and _q4_affect_only_without_goal_link(answer):
+        result["q4_outcome_unclear"] = True
+        result["q4_restart_at_q2"] = False
+
     # ── Layer 3: Override should_accept with our acceptance policy ────────────
 
     alignment = result.get("alignment", "not_aligned")
     confidence = float(result.get("confidence", 0.5))
-    result["should_accept"] = _compute_should_accept(alignment, confidence, attempt_count)
+
+    if question_id == 4 and result.get("q4_outcome_unclear") is True:
+        result["alignment"] = "not_aligned"
+        restart = result.get("q4_restart_at_q2") is True
+        result["restart_at_q2"] = restart
+        if restart:
+            # Q2/Q3 thread broken — full restart; no soft-pass
+            result["should_accept"] = False
+        else:
+            # Vague Q4 — sharpen only; do not use confidence-based accept (would pass junk)
+            result["should_accept"] = attempt_count >= _SOFT_PASS_AFTER
+    else:
+        result["restart_at_q2"] = False
+        result["should_accept"] = _compute_should_accept(alignment, confidence, attempt_count)
 
     return result

@@ -65,23 +65,49 @@ rather than achieve). Ask the parent to reframe in positive terms.
         "guidelines": """
 The answer must describe a concrete action the PARENT took in response to the child.
 
-The word "לא" (no/not) must NOT appear anywhere in the answer.
+The CHILD'S goal is given in context (from Q2 — as the parent described the child's goal).
+This is NOT the parent's own goal or parenting ideal. Parent and child goals may conflict;
+take no moral or educational stance about who "should" want what.
 
-The answer must be framed as a positive action (what the parent DID), not as
-avoidance (what the parent did NOT do or avoided doing).
+STEP 1 — RELEVANCE TO THE CHILD'S GOAL ONLY (check this first):
+The parent's action must sit on the SAME THREAD as the child's stated goal — the same
+need or situation (e.g. if the goal is "help me with my friends", the response must be
+about that help request / that situation, not a unrelated parental reaction).
 
-Bad examples (negation or avoidance):
-"לא עשיתי כלום"
-"לא הגבתי"
-"התעלמתי" — this describes inaction; ask the parent to describe what they actively did
+Ask whether the parent's action, in relation to that goal, did one of:
+  (A) helped the child achieve or move toward that goal, OR
+  (B) clearly refused, blocked, or opposed that goal in a way that engages the situation
+      (e.g. "I said I won't come with you to them", "I refused to speak to the friends").
 
-Good examples (positive action):
-"הסכמתי ועזרתי לו"
-"הסברתי לו בשקט"
-"יצאתי מהחדר"
-"ויתרתי לו"
-"עמדתי על שלי"
-"לקחתי אותו הצידה ודיברתי איתו"
+ATTENTION / CONNECTION GOALS (read when Q2 is about תשומת לב, קשר, שיראו אותו, שתגיב לו):
+If the child's goal is to get the parent's attention or engagement, then any parental
+response that **engages** the child is on-thread — including **yelling back, arguing,
+scolding, or a loud response**. That still "addresses" the attention goal (the parent
+responded; the child is not ignored). Do NOT mark these as irrelevant sidestep.
+Irrelevant here would be **pure ignoring, walking away with no response, refusing to
+engage at all** while the stated goal was attention.
+
+NOT sufficient (often not_aligned as irrelevant) — for NON-attention goals:
+- Only generic anger, yelling to be left alone, or "stop bothering me" with no link to
+  what the child wanted in the stated goal — that does not show help OR a clear
+  refusal tied to that goal; it sidesteps the thread.
+
+If the action does NEITHER — it is irrelevant to the child's goal → not_aligned.
+Ask the parent to describe a different action of theirs that directly connects to the
+child's goal (as help/block on that same thread), not a random parallel behavior.
+
+STEP 2 — POSITIVE ACTION (only if relevance passed):
+The word "לא" must NOT appear in the answer.
+The answer must describe what the parent DID, not what they did NOT do.
+
+Bad examples:
+"לא עשיתי כלום" — negation
+"התעלמתי" — may be inaction and/or irrelevant to the child's goal
+"gave a snack" when the child's goal was peer intervention — irrelevant to that goal
+
+Good examples (directly tied to the child's stated goal as help or block):
+Helping toward the goal, or refusing / blocking it — both are "relevant" if the link is clear.
+For an attention goal: responding, even by yelling back, is relevant; ignoring is not.
 
 If the answer contains the word "לא", it is automatically not_aligned.
 """,
@@ -90,22 +116,38 @@ If the answer contains the word "לא", it is automatically not_aligned.
         "id": 4,
         "question": "מה הייתה התוצאה ביחס למטרה?",
         "guidelines": """
-The answer should describe whether the child's goal was achieved or not,
-in light of how the parent responded.
+The child's goal is in context (Q2). The parent's action is in context (Q3).
 
-Be very permissive here. Accept any answer that conveys whether the goal was
-reached — even loosely. Do NOT loop or over-coach on this question.
+The answer must allow a reader to judge whether the CHILD'S goal was achieved or
+not, given what the parent did in Q3. This is not about the parent's goals or values.
 
-Good examples (accept all of these):
-"הוא קיבל מה שרצה"
-"היא לא קיבלה מה שרצתה"
-"הוא המשיך לשחק" (implies goal achieved)
-"היא נכנסה למקלחת" (implies goal not achieved)
-"ויתרתי לו"
-"כן" / "לא"
+STEP 1 — OUTCOME VS. CHILD'S GOAL (must name the thread of Q2):
+The answer must make it possible to judge whether THE CHILD'S STATED GOAL IN Q2
+was achieved or not (given Q3). Generic child behavior or emotion is NOT enough.
 
-Only reject if the answer is completely unrelated to the child's goal
-(e.g. describes an unrelated event, or is blank).
+Accept (aligned/partially_aligned) only when the outcome clearly implies that goal was
+reached OR not — e.g. "לא עזרתי לו מולם", "הלכנו יחד אליהם", "כן קיבל את העזרה".
+
+STEP 2 — CANNOT TELL FROM THIS ANSWER → q4_outcome_unclear = true:
+Set not_aligned when the answer does NOT tie the outcome to whether the Q2 goal was met.
+Examples that are TOO VAGUE (do not accept until sharpened):
+- Only continuing affect: "הוא המשיך לבכות", "המשיך לצעוק" — without stating in goal terms
+  whether the goal was achieved (e.g. for an attention goal: "קיבל תשומת לב", "המשכתי
+  להגיב לו" / "לא קיבל" — not only "kept crying").
+
+ATTENTION / CONNECTION GOALS: Ongoing crying or screaming after the parent responded may
+**imply** the child still got attention or engagement; the answer is still not_aligned
+until the parent phrases the result **relative to the goal** (e.g. "קיבל את תשומת הלב
+כי המשכתי לצעוק / להגיב"). Do NOT restart the whole protocol at Q2 for this — only ask
+for a sharper answer (see q4_restart_at_q2 below).
+
+STEP 3 — q4_restart_at_q2 (JSON, only when q4_outcome_unclear is true):
+Set q4_restart_at_q2 to TRUE only when Q3 and Q2 are so misaligned that the parent must
+re-clarify the child's goal at Q2. Set to FALSE when the only issue is vague wording —
+the parent should restate Q4 in terms of the goal, without restarting at Q2.
+
+STEP 4:
+Reject blank or totally unrelated text.
 """,
     },
     {
