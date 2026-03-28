@@ -39,32 +39,21 @@ If the answer contains the word "לא", it is automatically not_aligned.
         "id": 2,
         "question": "מה לדעתך הילד ניסה להשיג עם הפעולה הזו?",
         "guidelines": """
-STEP 1 — COHERENCE CHECK (most important, evaluate this first):
-The goal must make sense given the specific situation and child action already described.
-Ask yourself: "Given what happened, is it plausible that the child did this action
-in order to achieve THIS goal?"
+STEP 1 — COHERENCE (evaluate this first, no exceptions):
+Ask: "Given the situation and the child's specific action, is it genuinely plausible
+that the child performed that action in order to achieve THIS goal?"
 
-If the goal is implausible or clearly unrelated to the described situation → not_aligned.
-Do NOT rely on the format examples below to override this coherence check.
+If the answer does not logically follow from the described event and action → not_aligned.
+No format pattern or keyword can override a failed coherence check.
 
-Example of coherent answer:
-Event: child lost a game and pulled parent's hand toward friends.
-Good: "שתתערב לטובתו", "שתגן עליו", "שיקבל עזרה", "תמיכה"
-Bad: "לאכול ארטיק", "זמן מסך", "שקט" — these have nothing to do with the situation.
+STEP 2 — FORMAT (only if coherence passed):
+The answer may be phrased in any of these ways:
+- Something the parent should do ("שתתערב", "שאוותר")
+- A noun describing what the child wanted ("תמיכה", "עזרה", "ניצחון")
+- An outcome the child wanted to reach ("שיוכל להמשיך לשחק")
 
-Example of coherent answer:
-Event: child ignored parent and kept playing on the computer.
-Good: "שיוכל להמשיך לשחק", "זמן מסך", "שאוותר לו"
-Bad: "שיאכל ארוחת ערב", "תמיכה רגשית" — unrelated to the described action.
-
-STEP 2 — FORMAT CHECK (only if coherence passed):
-Accept any of these formats as long as the content passed the coherence check:
-- Actions the parent should perform: "שתתערב", "שאוותר לו", "שאצא מהחדר"
-- Nouns: "תמיכה", "שקט", "עזרה", "ניצחון"
-- Outcomes the child wanted: "שיוכל להמשיך לשחק", "שיקבל עזרה"
-
-Avoidance framing is NOT aligned:
-Bad: "שלא יצטרך לעשות שיעורים" → ask to reframe as "שיוכל לשחק"
+One format that is NOT acceptable: avoidance framing (what the child wanted to avoid
+rather than achieve). Ask the parent to reframe in positive terms.
 """,
     },
     {
